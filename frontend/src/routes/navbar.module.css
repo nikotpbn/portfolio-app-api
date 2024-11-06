@@ -1,0 +1,24 @@
+.navbar {
+    display: flex;
+    flex-flow: row nowrap;
+}
+
+.navbar-item {
+    margin-right: 1rem;
+}
+
+.navbar-link {
+    padding: 1rem;
+    border-radius: 5px;
+    color: white;
+}
+
+.navbar-link:hover {
+    color: black;
+    background-color: white;
+}
+
+.navbar-link.active {
+    color: black;
+    background-color: white;
+}
