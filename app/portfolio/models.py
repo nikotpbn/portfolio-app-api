@@ -1,25 +1,28 @@
 from django.db import models
 from django.utils.text import slugify
 from django.contrib.auth import get_user_model
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 import uuid
 import os
+
+User = get_user_model()
 
 
 def art_image_file_path(instance, filename):
     """Generate file path for new art image."""
     ext = os.path.splitext(filename)[1]
-    filename = f'{uuid.uuid4()}{ext}'
+    filename = f"{uuid.uuid4()}{ext}"
 
-    return os.path.join('uploads', 'art', filename)
+    return os.path.join("uploads", "art", filename)
 
 
 def artist_image_file_path(instance, filename):
     """Generate file path for new artist image."""
     ext = os.path.splitext(filename)[1]
-    filename = f'{uuid.uuid4()}{ext}'
+    filename = f"{uuid.uuid4()}{ext}"
 
-    return os.path.join('uploads', 'artist', filename)
+    return os.path.join("uploads", "artist", filename)
 
 
 def normalize_name(str):
@@ -33,9 +36,7 @@ class Tag(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        get_user_model(),
-        on_delete=models.DO_NOTHING,
-        related_name='tags'
+        User, on_delete=models.DO_NOTHING, related_name="tags"
     )
 
     def __str__(self):
@@ -49,8 +50,8 @@ class Tag(models.Model):
 class Character(models.Model):
 
     class Sex(models.TextChoices):
-        MALE = 'M'
-        FEMALE = 'F'
+        MALE = "M"
+        FEMALE = "F"
 
     page_id = models.CharField(max_length=10)
     name = models.CharField(max_length=255, unique=True)
@@ -60,7 +61,7 @@ class Character(models.Model):
     first_appearance = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -73,8 +74,7 @@ class Character(models.Model):
 class Artist(models.Model):
     name = models.CharField(max_length=255, unique=True)
     image = models.ImageField(
-        null=True,
-        blank=True,
+        null=True, blank=True,
         upload_to=artist_image_file_path
     )
     instagram = models.CharField(max_length=128, blank=True, null=True)
@@ -82,7 +82,7 @@ class Artist(models.Model):
     twitter = models.CharField(max_length=128, blank=True, null=True)
     oficial = models.CharField(max_length=128, blank=True, null=True)
     slug = models.SlugField(max_length=255, unique=True)
-    created_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -94,29 +94,26 @@ class Artist(models.Model):
 
 
 class Art(models.Model):
-    TYPE_CHOICES = [
-        (1, 'Drawing'),
-        (2, 'Painting'),
-        (3, 'Sculpture'),
-        (4, 'Tatoo'),
-        (5, 'Photo'),
-        (6, 'Digital')
+    STYLE_CHOICES = [
+        (1, "Drawing"),
+        (2, "Painting"),
+        (3, "Sculpture"),
+        (4, "Tatoo"),
+        (5, "Photo"),
+        (6, "Digital"),
     ]
 
     title = models.CharField(max_length=50)
     subtitle = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     image = models.ImageField(null=True, upload_to=art_image_file_path)
-    type = models.IntegerField(choices=TYPE_CHOICES)
+    style = models.IntegerField(choices=STYLE_CHOICES)
     tags = models.ManyToManyField(Tag, blank=True)
     characters = models.ManyToManyField(Character, blank=True)
-    artist = models.ForeignKey(
-        Artist,
-        on_delete=models.CASCADE,
-        related_name='artworks'
-    )
+    artists = models.ManyToManyField(Artist, through="Artwork")
+    ratings = models.ManyToManyField(User, through="Rating")
     created_at = models.DateTimeField(null=False, auto_now_add=True)
-    created_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.title
@@ -125,3 +122,26 @@ class Art(models.Model):
         self.title = normalize_name(self.title)
         self.subtitle = normalize_name(self.subtitle)
         return super().save(*args, **kwargs)
+
+
+class Artwork(models.Model):
+    ROLE_CHOICES = [
+        (1, "Penciler"),
+        (2, "Colors"),
+        (3, "Sculptor"),
+        (4, "Designer"),
+    ]
+
+    art = models.ForeignKey(Art, on_delete=models.CASCADE)
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
+    role = models.IntegerField(choices=ROLE_CHOICES)
+
+
+class Rating(models.Mdel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    art = models.ForeignKey(Art, on_delete=models.CASCADE)
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
+    rating = models.FloatField(
+        validators=[MaxValueValidator(5), MinValueValidator(0)]
+    )
+    comment = models.TextField()
