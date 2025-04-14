@@ -43,6 +43,10 @@ services:
       - MYSQL_PASSWORD=changeme
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 3s
+      retries: 10
 
 volumes:
   dev-db-data:

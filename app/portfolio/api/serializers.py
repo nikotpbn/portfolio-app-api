@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Avg
 
 from portfolio import models
 
@@ -16,7 +17,7 @@ class CharacterSerializer(serializers.ModelSerializer):
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Tag
-        fields = '__all__'
+        fields = ["name"]
 
 
 class ArtistSerializer(serializers.ModelSerializer):
@@ -41,6 +42,13 @@ class ArtistImageSerializer(serializers.ModelSerializer):
 
 
 class ArtSerializer(serializers.ModelSerializer):
+
+    tags = serializers.StringRelatedField(many=True)
+    characters = serializers.StringRelatedField(many=True)
+    artists = serializers.StringRelatedField(many=True)
+    rating = serializers.SerializerMethodField()
+    ratings = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Art
         fields = '__all__'
@@ -48,6 +56,12 @@ class ArtSerializer(serializers.ModelSerializer):
             'tags': {'required': False},
             'characters': {'required': False},
         }
+
+    def get_rating(self, obj):
+        return obj.rating.aggregate(Avg("rating"))["rating__avg"]
+
+    def get_ratings(self, obj):
+        return obj.rating.all().values("user__email", "rating", "comment")
 
 
 class ArtImageSerializer(serializers.ModelSerializer):

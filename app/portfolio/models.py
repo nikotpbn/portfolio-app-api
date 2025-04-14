@@ -73,14 +73,8 @@ class Character(models.Model):
 
 class Artist(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    image = models.ImageField(
-        null=True, blank=True,
-        upload_to=artist_image_file_path
-    )
-    instagram = models.CharField(max_length=128, blank=True, null=True)
-    deviant = models.CharField(max_length=128, blank=True, null=True)
-    twitter = models.CharField(max_length=128, blank=True, null=True)
-    oficial = models.CharField(max_length=128, blank=True, null=True)
+    image = models.ImageField(null=True, blank=True, upload_to=artist_image_file_path)
+    is_professional = models.BooleanField(default=False)
     slug = models.SlugField(max_length=255, unique=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -111,9 +105,9 @@ class Art(models.Model):
     tags = models.ManyToManyField(Tag, blank=True)
     characters = models.ManyToManyField(Character, blank=True)
     artists = models.ManyToManyField(Artist, through="Artwork")
-    ratings = models.ManyToManyField(User, through="Rating")
     created_at = models.DateTimeField(null=False, auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    ratings = models.ManyToManyField(User, through="Rating", related_name="user_ratings")
 
     def __str__(self):
         return self.title
@@ -136,12 +130,32 @@ class Artwork(models.Model):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
     role = models.IntegerField(choices=ROLE_CHOICES)
 
+    def __str__(self):
+        return f"{self.art} by {self.artist}"
 
-class Rating(models.Mdel):
+
+class Rating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    art = models.ForeignKey(Art, on_delete=models.CASCADE)
-    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
-    rating = models.FloatField(
-        validators=[MaxValueValidator(5), MinValueValidator(0)]
-    )
+    art = models.ForeignKey(Art, on_delete=models.CASCADE, related_name="rating")
+    rating = models.FloatField(validators=[MaxValueValidator(5), MinValueValidator(0)])
     comment = models.TextField()
+
+    class Meta:
+        unique_together = ["user", "art"]
+
+
+class Socials(models.Model):
+    NETWORK_CHOICES = [
+        (1, "Instagram"),
+        (2, "X"),
+        (2, "DeviantArt"),
+        (3, "ArtStation"),
+        (4, "Oficial"),
+    ]
+
+    artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
+    network = models.CharField(max_length=32)
+    link = models.URLField()
+
+    class Meta:
+        unique_together = ["artist", "network"]
